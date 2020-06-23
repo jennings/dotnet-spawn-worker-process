@@ -10,11 +10,11 @@ namespace Worker
         public string Greeting { get; set; }
     }
 
-    public class Greeter
+    public class GreeterJob
     {
         private readonly GreeterJobDescription _description;
 
-        public Greeter(GreeterJobDescription description)
+        public GreeterJob(GreeterJobDescription description)
         {
             _description = description;
         }

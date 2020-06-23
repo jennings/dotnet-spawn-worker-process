@@ -30,7 +30,7 @@ namespace Worker
                     description = serializer.Deserialize<GreeterJobDescription>(json);
                 }
 
-                var result = new Greeter(description).Run();
+                var result = new GreeterJob(description).Run();
 
                 using (var writer = new StreamWriter(outPipe))
                 using (var json = new JsonTextWriter(writer))
