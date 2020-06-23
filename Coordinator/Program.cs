@@ -13,18 +13,17 @@ namespace Coordinator
     {
         static void Main(string[] args)
         {
-            Console.WriteLine("Server starting");
+            Console.WriteLine("COORDINATOR: Started");
 
-            var workerAssemblyLocation = typeof(Worker.GreeterJobDescription).Assembly.Location;
+            var workerAssemblyLocation = args.Length > 0 ? args[0] : GetWorkerAssemblyLocation();
 
-            using (var outPipe = new AnonymousPipeServerStream(PipeDirection.Out))
-            using (var inPipe = new AnonymousPipeServerStream(PipeDirection.In))
+            Console.WriteLine("COORDINATOR: Worker assembly: {0}", workerAssemblyLocation);
+
+            using (var outPipe = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable))
+            using (var inPipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable))
             {
                 var outPipeId = outPipe.GetClientHandleAsString();
                 var inPipeId = inPipe.GetClientHandleAsString();
-
-                outPipe.DisposeLocalCopyOfClientHandle();
-                inPipe.DisposeLocalCopyOfClientHandle();
 
                 Process process;
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -35,6 +34,9 @@ namespace Coordinator
                 {
                     process = LaunchAssemblyOnNonWindows(workerAssemblyLocation, outPipeId, inPipeId);
                 }
+
+                outPipe.DisposeLocalCopyOfClientHandle();
+                inPipe.DisposeLocalCopyOfClientHandle();
 
                 var serializer = new JsonSerializer();
 
@@ -65,6 +67,14 @@ namespace Coordinator
 
                 Console.WriteLine("COORDINATOR: Received greeting: {0}", result.Greeting);
             }
+
+            Console.WriteLine("COORDINATOR: Done");
+        }
+
+        static string GetWorkerAssemblyLocation()
+        {
+            var location = typeof(GreeterJobDescription).Assembly.Location;
+            return Path.ChangeExtension(location, "exe");
         }
 
         static Process LaunchAssemblyOnWindows(string assembly, params string[] args)
