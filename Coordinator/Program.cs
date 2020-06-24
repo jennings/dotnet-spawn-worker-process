@@ -1,10 +1,8 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
-using System.IO.Pipes;
 using System.Linq;
 using System.Runtime.InteropServices;
-using Newtonsoft.Json;
 using Worker;
 
 namespace Coordinator
@@ -19,11 +17,9 @@ namespace Coordinator
 
             Console.WriteLine("COORDINATOR: Worker assembly: {0}", workerAssemblyLocation);
 
-            using (var outPipe = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable))
-            using (var inPipe = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable))
+            using (var comm = new ServerCommunicator())
             {
-                var outPipeId = outPipe.GetClientHandleAsString();
-                var inPipeId = inPipe.GetClientHandleAsString();
+                var (outPipeId, inPipeId) = comm.GetClientHandleStrings();
 
                 Process process;
                 if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
@@ -35,20 +31,9 @@ namespace Coordinator
                     process = LaunchAssemblyOnNonWindows(workerAssemblyLocation, outPipeId, inPipeId);
                 }
 
-                outPipe.DisposeLocalCopyOfClientHandle();
-                inPipe.DisposeLocalCopyOfClientHandle();
+                comm.DisposeLocalClientHandles();
 
-                var serializer = new JsonSerializer();
-
-                using (var writer = new StreamWriter(outPipe))
-                using (var json = new JsonTextWriter(writer))
-                {
-                    serializer.Serialize(json, new GreeterJobDescription
-                    {
-                        Name = "Ada"
-                    });
-                    json.Flush();
-                }
+                comm.Write(new GreeterJobDescription { Name = "Ada" });
 
                 var success = process.WaitForExit(5000);
                 if (!success)
@@ -58,12 +43,7 @@ namespace Coordinator
                     return;
                 }
 
-                GreeterResult result;
-                using (var reader = new StreamReader(inPipe))
-                using (var json = new JsonTextReader(reader))
-                {
-                    result = serializer.Deserialize<GreeterResult>(json);
-                }
+                var result = comm.Read<GreeterResult>();
 
                 Console.WriteLine("COORDINATOR: Received greeting: {0}", result.Greeting);
             }

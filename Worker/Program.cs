@@ -1,7 +1,4 @@
 ﻿using System;
-using System.IO;
-using System.IO.Pipes;
-using Newtonsoft.Json;
 
 namespace Worker
 {
@@ -17,27 +14,15 @@ namespace Worker
             var inPipeId = args[0];
             var outPipeId = args[1];
 
-            using (var inPipe = new AnonymousPipeClientStream(PipeDirection.In, inPipeId))
-            using (var outPipe = new AnonymousPipeClientStream(PipeDirection.Out, outPipeId))
+            using (var comm = ClientCommunicator.OpenPipes(inPipeId, outPipeId))
             {
                 Console.WriteLine("WORKER: Opened streams");
 
-                var serializer = new JsonSerializer();
-                GreeterJobDescription description;
-                using (var reader = new StreamReader(inPipe))
-                using (var json = new JsonTextReader(reader))
-                {
-                    description = serializer.Deserialize<GreeterJobDescription>(json);
-                }
+                var description = comm.Read<GreeterJobDescription>();
 
                 var result = new GreeterJob(description).Run();
 
-                using (var writer = new StreamWriter(outPipe))
-                using (var json = new JsonTextWriter(writer))
-                {
-                    serializer.Serialize(json, result);
-                    json.Flush();
-                }
+                comm.Write(result);
             }
 
             Console.WriteLine("WORKER: Done");
