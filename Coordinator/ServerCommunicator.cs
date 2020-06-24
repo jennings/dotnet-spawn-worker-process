@@ -14,8 +14,8 @@ namespace Coordinator
 
         public ServerCommunicator()
         {
-            _out = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
-            _in = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
+            _out = new AnonymousPipeServerStream(PipeDirection.Out, HandleInheritability.Inheritable);
+            _in = new AnonymousPipeServerStream(PipeDirection.In, HandleInheritability.Inheritable);
         }
 
         public void Dispose()
